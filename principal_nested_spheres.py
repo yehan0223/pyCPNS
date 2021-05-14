@@ -500,7 +500,7 @@ class PNS(object):
         if d > 2:
             for i in range(d-2):
                 rot_mat = rotate_to_north_pole(ns_orthaxis[i+1].squeeze())
-                factor = np.sin(ns_radius[i+1] + res[i + 2, :])
+                factor = np.sin(ns_radius[i+1] + res[i+2, :])
                 sin_theta = factor[np.newaxis, :] * T
                 cos_theta = np.cos(ns_radius[i+1] + res[i+2, :])
                 curr_T = np.vstack((sin_theta, cos_theta))

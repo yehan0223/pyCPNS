@@ -1,5 +1,5 @@
 import numpy as np
-def rotate_to_north_pole(v, angle=None):
+def rotate_to_north_pole(v1, angle=None):
     """
     Rotate a unit vector v to the north pole of a unit sphere
 
@@ -7,10 +7,10 @@ def rotate_to_north_pole(v, angle=None):
     See Rodrigues' rotation formula: https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Matrix_notation
     Input: 1D array (i.e., a point on a unit sphere)
     """
-    d = len(v) # dimension of the feature space
+    d = len(v1) # dimension of the feature space
 
     ## normalize vector v
-    v = v / np.linalg.norm(v)
+    v = v1 / np.linalg.norm(v1)
     ## north pole coordinates d-dimension [0, ..., 0, 1]
     north_pole = [0] * (d - 1)
     north_pole.append(1)
@@ -27,8 +27,7 @@ def rotate_to_north_pole(v, angle=None):
     c = c / np.linalg.norm(c)
     A = np.outer(north_pole, c) - np.outer(c, north_pole)
 
-    rot = np.eye(d) + np.sin(angle)*A + (np.cos(angle) - 1)*(np.outer(north_pole, north_pole)\
-                                                             + np.outer(c, c))
+    rot = np.eye(d) + np.sin(angle)*A + (np.cos(angle) - 1)*(np.outer(north_pole, north_pole) + np.outer(c, c))
     return rot
 def log_north_pole(x):
     """
