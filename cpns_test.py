@@ -157,7 +157,7 @@ zShape = CPNSScores[0:dimZShape-1] / meanSizePDM
 zSizePDM = CPNSScores[dimZShape-1]
 sizePDMOverall = np.multiply(meanSizeOfPDMs, np.exp(zSizePDM / meanSizeOfPDMs))[0, 0]
 XStar = PNS.inv(zShape, PNSShape)[:, 0]
-X = np.add(sizePDMOverall * XStar, np.repeat(meanOfCombinedPDM, nTotalAtoms))
+X = np.add(sizePDMOverall * XStar, np.tile(meanOfCombinedPDM, nTotalAtoms)).T
 
 # Construct radii
 zRStar = CPNSScores[dimZShape: dimZShape + nTotalRadii]
