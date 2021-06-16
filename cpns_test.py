@@ -157,7 +157,7 @@ zShape = CPNSScores[0:dimZShape-1] / meanSizePDM
 zSizePDM = CPNSScores[dimZShape-1]
 sizePDMOverall = np.multiply(meanSizeOfPDMs, np.exp(zSizePDM / meanSizeOfPDMs))[0, 0]
 XStar = PNS.inv(zShape, PNSShape)[:, 0]
-X = np.add(sizePDMOverall * XStar, np.repeat(meanOfCombinedPDM, nTotalAtoms))
+X = np.add(sizePDMOverall * XStar, np.tile(meanOfCombinedPDM, nTotalAtoms)).T
 
 # Construct radii
 zRStar = CPNSScores[dimZShape: dimZShape + nTotalRadii]
@@ -181,11 +181,26 @@ upMean = vtk.vtkPolyData()
 upMean.DeepCopy(upSpokes[0])
 for i in range(nTotalAtoms):
     upMean.GetPoints().SetPoint(i, X[3*i:3*i+3])
+    upMean.GetPointData().GetScalars('spokeLength').SetValue(i,radii[i])
+    upMean.GetPointData().GetArray('spokeDirection').SetTuple(i,spokeDirs[3*i:3*i+3,0])
+
+upWriter = vtk.vtkXMLPolyDataWriter()
+upWriter.SetFileName('test_up.vtp')
+upWriter.SetInputData(upMean)
+upWriter.Update()
 
 downMean = vtk.vtkPolyData()
 downMean.DeepCopy(downSpokes[0])
 for i in range(nTotalAtoms):
     downMean.GetPoints().SetPoint(i, X[3*i:3*i+3])
+    downMean.GetPoints().SetPoint(i, X[3*i:3*i+3])
+    downMean.GetPointData().GetScalars('spokeLength').SetValue(i,radii[i + nTotalAtoms])
+    downMean.GetPointData().GetArray('spokeDirection').SetTuple(i,spokeDirs[3*(nTotalAtoms + i):3*(nTotalAtoms + i)+3,0])
+
+downWriter = vtk.vtkXMLPolyDataWriter()
+downWriter.SetFileName('test_down.vtp')
+downWriter.SetInputData(downMean)
+downWriter.Update()
 
 crestMean = vtk.vtkPolyData()
 crestMean.DeepCopy(crestSpokes[0])
