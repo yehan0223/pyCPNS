@@ -68,9 +68,9 @@ meanSizePDM = np.exp(np.mean(np.log(sizePDM), keepdims=1))
 normalizedSizePDM = np.log(sizePDM / meanSizePDM)
 
 # Invert the resmat
-# invertPNS = PNS.inv(resmat, PNS_coords)
-# print(sphmatPDM) original data
-# print(invertPNS) reconstructed data
+# invertPNS = PNS.inv(ZShape, PNSShape)
+# print(sphmatPDM) #original data
+# print(invertPNS) #reconstructed data
 
 ### CPNS: Step 2 : Deal with atom radii (log radii are Euclidean variables)
 logR = np.zeros((nTotalRadii, nSamples))
@@ -99,17 +99,15 @@ for i in range(nSamples):
     crestD = np.reshape(vtk_to_numpy(crestSpokes[i].GetPointData().GetArray('spokeDirection')), -1)
     spokeDirections[:, i] = np.concatenate((upD, downD, crestD))
 
-print(spokeDirections[:, 0])
-
 ZSpoke = np.zeros((2*nTotalRadii, nSamples))
 PNSSpoke = []
 for i in range(nTotalRadii):
     pnsModel = PNS(spokeDirections[(3*i):(3*i+3), :], itype=9)
     pnsModel.fit()
     zD, pnsD = pnsModel.output
-    invert_zD = PNS.inv(zD, pnsD)
-    print(zD)
-    print(invert_zD)
+    # invert_zD = PNS.inv(zD, pnsD)
+    # print(spokeDirections[(3*i):(3*i+3), :])
+    # print(invert_zD)
     PNSSpoke.append(pnsD)
     ZSpoke[(2*i):(2*i+2), :] = zD
 
@@ -142,6 +140,7 @@ components_cpns = cpns_pca.components_.T
 
 # 1. Convert from EComp to S-space (should be wrapped in a function)
 CPNSMeanScores = np.zeros((components_cpns.shape[0], 1))
+#CPNSMeanScores = components_cpns[:, 0, np.newaxis] # PCs
 
 # Construct hub positions
 CPNSScores = CPNSMeanScores
@@ -157,7 +156,7 @@ zShape = CPNSScores[0:dimZShape-1] / meanSizePDM
 zSizePDM = CPNSScores[dimZShape-1]
 sizePDMOverall = np.multiply(meanSizeOfPDMs, np.exp(zSizePDM / meanSizeOfPDMs))[0, 0]
 XStar = PNS.inv(zShape, PNSShape)[:, 0]
-X = np.add(sizePDMOverall * XStar, np.repeat(meanOfCombinedPDM, nTotalAtoms))
+X = np.add(sizePDMOverall * XStar, np.tile(meanOfCombinedPDM[0, :], nTotalAtoms))
 
 # Construct radii
 zRStar = CPNSScores[dimZShape: dimZShape + nTotalRadii]
@@ -181,12 +180,51 @@ upMean = vtk.vtkPolyData()
 upMean.DeepCopy(upSpokes[0])
 for i in range(nTotalAtoms):
     upMean.GetPoints().SetPoint(i, X[3*i:3*i+3])
+    upMean.GetPointData().GetScalars('spokeLength').SetTuple1(i, radii[i])
+    upMean.GetPointData().GetScalars('spokeDirection').SetTuple3(i, spokeDirs[3*i], spokeDirs[3*i+1], spokeDirs[3*i+2])
+
 
 downMean = vtk.vtkPolyData()
 downMean.DeepCopy(downSpokes[0])
 for i in range(nTotalAtoms):
     downMean.GetPoints().SetPoint(i, X[3*i:3*i+3])
-
+    downMean.GetPointData().GetScalars('spokeLength').SetTuple1(i, radii[i+nTotalAtoms])
+    downMean.GetPointData().GetScalars('spokeDirection').SetTuple3(i,
+                                                                   spokeDirs[3*(i+nTotalAtoms)],
+                                                                   spokeDirs[3*(i+nTotalAtoms)+1],
+                                                                   spokeDirs[3*(i+nTotalAtoms)+2])
 crestMean = vtk.vtkPolyData()
 crestMean.DeepCopy(crestSpokes[0])
+pointMap = np.zeros(crestMean.GetNumberOfPoints())
+for i in range(crestMean.GetNumberOfPoints()):
+    distance = 1000
+    pt0 = np.array(crestMean.GetPoint(i))
+    for j in range(upSpokes[0].GetNumberOfPoints()):
+        pt1 = np.array(upSpokes[0].GetPoint(j))
+        newDistance = np.linalg.norm(pt1 - pt0)
+        if newDistance < distance:
+            distance = newDistance
+            pointMap[i] = j
+print(pointMap)
+for i in range(crestMean.GetNumberOfPoints()):
+    crestMean.GetPoints().SetPoint(i, X[int(3*pointMap[i]):int(3*pointMap[i]+3)])
+    crestMean.GetPointData().GetScalars('spokeLength').SetTuple1(i, radii[i + 2*nTotalAtoms])
+    crestMean.GetPointData().GetScalars('spokeDirection').SetTuple3(i,
+                                                                   spokeDirs[3*(i+2*nTotalAtoms)],
+                                                                   spokeDirs[3*(i+2*nTotalAtoms)+1],
+                                                                   spokeDirs[3*(i+2*nTotalAtoms)+2])
+
+writer = vtk.vtkXMLPolyDataWriter()
+writer.SetFileName('up.vtp')
+writer.SetInputData(upMean)
+writer.Write()
+
+writer.SetFileName('down.vtp')
+writer.SetInputData(downMean)
+writer.Write()
+
+writer.SetFileName('crest.vtp')
+writer.SetInputData(crestMean)
+writer.Write()
+
 print('Done')

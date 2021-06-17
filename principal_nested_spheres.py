@@ -75,7 +75,7 @@ class PNS(object):
 
         ## extract the signal by projecting to the kernel space (complementary of the null space)
         if nullspdim > 0:
-        currentSphere = np.matmul(u[:, :dm+1].T, self.data)
+            currentSphere = np.matmul(u[:, :dm+1].T, self.data)
         else:
             currentSphere = self.data
 
